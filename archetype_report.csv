@@ -1,0 +1,6 @@
+archetype,occurrences,stations_affected,dominant_root_cause,avg_confidence,avg_hour,spans_multiple_stations
+0,2386,5,localized_sensor_fault,0.3,11.4,True
+2,21,5,localized_sensor_fault,0.233,17.6,True
+3,18,5,localized_sensor_fault,0.246,12.8,True
+4,13,5,localized_sensor_fault,0.269,15.8,True
+1,12,4,localized_sensor_fault,0.261,11.9,True
