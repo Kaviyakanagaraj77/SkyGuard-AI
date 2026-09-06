@@ -18,10 +18,12 @@ if sys.platform == "win32":
 BASE_URL = "http://127.0.0.1:8000"
 
 
-def test_endpoint(endpoint, name):
+def test_endpoint(endpoint, name, method="GET", body=None):
     url = f"{BASE_URL}{endpoint}"
     try:
-        req = urllib.request.Request(url)
+        data_bytes = json.dumps(body).encode("utf-8") if body else None
+        headers = {"Content-Type": "application/json"} if body else {}
+        req = urllib.request.Request(url, data=data_bytes, headers=headers, method=method)
         with urllib.request.urlopen(req) as resp:
             status = resp.status
             data = json.loads(resp.read().decode())
@@ -79,6 +81,12 @@ def run_tests():
     archetypes = test_endpoint("/fleet/archetypes", "Anomaly Signature Archetypes")
     if archetypes:
         print(f"     Recurring Signature Clusters: {len(archetypes)}")
+
+    # 5. What-If Simulator Endpoint
+    print("\n5. What-If Sensor Simulator Endpoint:")
+    analysis = test_endpoint("/analyze", "What-If Telemetry Analysis", method="POST", body={"temperature": 45.0, "pressure": 1005.0, "humidity": 92.0})
+    if analysis:
+        print(f"     Input: T=45C, P=1005hPa, RH=92% -> Anomaly: {analysis.get('predicted_anomaly')}, Cause: {analysis.get('predicted_root_cause')}")
 
     print("\n" + "=" * 60)
     print(" ALL REST VERIFICATION TESTS PASSED SUCCESSFULLY!")

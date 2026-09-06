@@ -258,3 +258,76 @@ async def ws_live(websocket: WebSocket):
             await asyncio.sleep(1.5)
     except WebSocketDisconnect:
         pass
+
+
+# ---------------------------------------------------------------------------
+# NEW: What-If Sensor Simulator Analysis Endpoint
+# ---------------------------------------------------------------------------
+from pydantic import BaseModel
+
+class TelemetryInput(BaseModel):
+    temperature: float
+    pressure: float
+    humidity: float
+
+@app.post("/analyze")
+def analyze_telemetry(payload: TelemetryInput):
+    t = payload.temperature
+    p = payload.pressure
+    h = payload.humidity
+
+    # 1. Layer 1 Rule-based bounds check
+    range_violation = bool(t < -20 or t > 55 or p < 850 or p > 1085 or h < 0 or h > 100)
+
+    # 2. Layer 3 Multivariate Isolation Forest check
+    sample_df = pd.DataFrame([{"temperature": t, "pressure": p, "humidity": h}])
+    raw_mv_score = -detector.iso_forest.score_samples(sample_df[FEATURES])[0]
+    mv_pred = bool(detector.iso_forest.predict(sample_df[FEATURES])[0] == -1)
+
+    # 3. Layer 5 Physics-based Magnus-Tetens dew point check
+    b, c = 17.62, 243.12
+    rh_c = max(0.1, min(100.0, h))
+    alpha = np.log(rh_c / 100.0) + (b * t) / (c + t)
+    dew_point = (c * alpha) / (b - alpha)
+    physics_violation = bool(dew_point > t + 0.1 or (t > 38 and h > 85))
+
+    # Calculate fused confidence score & trust score
+    mv_norm = max(0.0, min(1.0, (raw_mv_score - 0.35) / 0.30))
+    rule_score = 1.0 if range_violation else 0.0
+    phys_score = 1.0 if physics_violation else 0.0
+
+    confidence = round(float(0.45 * mv_norm + 0.35 * rule_score + 0.20 * phys_score), 3)
+    is_anomaly = int(range_violation or mv_pred or physics_violation or confidence > 0.40)
+    t_score = trust_score(confidence)
+
+    # Root Cause Classification & Recommended Action
+    if range_violation:
+        cause = "sensor_spike_fault"
+        action = "Out-of-range value detected. Dispatch field technician to test transducer."
+    elif physics_violation:
+        cause = "physics_inconsistent_reading"
+        action = "Thermodynamically implausible T/RH coupling. Re-calibrate humidity probe."
+    elif mv_pred:
+        cause = "calibration_drift_or_inconsistency"
+        action = "Multivariate isolation anomaly. Schedule sensor calibration test."
+    else:
+        cause = "normal"
+        action = "Reading is within healthy expected meteorological operational limits."
+
+    return {
+        "temperature": t,
+        "pressure": p,
+        "humidity": h,
+        "predicted_anomaly": is_anomaly,
+        "confidence_score": confidence,
+        "trust_score": t_score,
+        "predicted_root_cause": cause,
+        "dew_point": round(float(dew_point), 2),
+        "layer_signals": {
+            "range_violation": range_violation,
+            "multivariate_ml": mv_pred,
+            "physics_violation": physics_violation
+        },
+        "recommended_action": action
+    }
+
