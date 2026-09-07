@@ -159,8 +159,8 @@ def digital_twin(station_id: str, points: int = 50):
     station_data = results[results["station_id"] == station_id].sort_values("timestamp").tail(points)
     out = {"station_id": station_id, "timestamps": station_data["timestamp"].astype(str).tolist()}
     for col in FEATURES:
-        out[col] = station_data[col].where(pd.notna(station_data[col]), None).round(2).tolist()
-        out[f"{col}_expected"] = station_data[f"{col}_expected"].round(2).tolist()
+        out[col] = [None if pd.isna(x) else round(float(x), 2) for x in station_data[col]]
+        out[f"{col}_expected"] = [None if pd.isna(x) else round(float(x), 2) for x in station_data[f"{col}_expected"]]
     return out
 
 

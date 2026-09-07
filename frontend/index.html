@@ -1388,6 +1388,304 @@
             });
         }
 
+        // DIGITAL TWIN ANALYTICS (PHASE 3)
+        let twinCharts = { temp: null, pressure: null, humidity: null };
+
+        async function loadDigitalTwin() {
+            const select = document.getElementById("twinStationSelect");
+            const stationId = select ? select.value : "AWS_001";
+
+            try {
+                const res = await fetch(API_BASE + "/digital-twin/" + stationId);
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                const data = await res.json();
+
+                if (!data || !data.timestamps || data.timestamps.length === 0) {
+                    showDigitalTwinEmptyMessage("No historical data available for " + stationId);
+                    return;
+                }
+
+                // Clear any empty overlay
+                ["twinTempChart", "twinPressureChart", "twinHumidityChart"].forEach(id => {
+                    const canvas = document.getElementById(id);
+                    if (canvas && canvas.parentElement) {
+                        canvas.parentElement.querySelectorAll(".empty-msg-overlay").forEach(el => el.remove());
+                    }
+                });
+
+                // Format labels nicely (e.g. HH:mm or timestamp string)
+                const labels = data.timestamps.map(ts => {
+                    const str = String(ts);
+                    if (str.includes(" ")) return str.split(" ")[1] || str;
+                    if (str.includes("T")) return str.split("T")[1].slice(0, 5) || str;
+                    return str;
+                });
+
+                // 1. Temperature Chart
+                createTwinLineChart(
+                    "twinTempChart",
+                    "temp",
+                    labels,
+                    [
+                        {
+                            label: "Actual Temperature (°C)",
+                            data: data.temperature,
+                            borderColor: "#3b82f6",
+                            backgroundColor: "rgba(59, 130, 246, 0.15)",
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: false
+                        },
+                        {
+                            label: "Expected Baseline (°C)",
+                            data: data.temperature_expected,
+                            borderColor: "#10b981",
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ],
+                    "Temperature (°C)"
+                );
+
+                // 2. Pressure Chart
+                createTwinLineChart(
+                    "twinPressureChart",
+                    "pressure",
+                    labels,
+                    [
+                        {
+                            label: "Actual Pressure (hPa)",
+                            data: data.pressure,
+                            borderColor: "#8b5cf6",
+                            backgroundColor: "rgba(139, 92, 246, 0.15)",
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: false
+                        },
+                        {
+                            label: "Expected Baseline (hPa)",
+                            data: data.pressure_expected,
+                            borderColor: "#10b981",
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ],
+                    "Pressure (hPa)"
+                );
+
+                // 3. Humidity Chart
+                createTwinLineChart(
+                    "twinHumidityChart",
+                    "humidity",
+                    labels,
+                    [
+                        {
+                            label: "Actual Humidity (%)",
+                            data: data.humidity,
+                            borderColor: "#06b6d4",
+                            backgroundColor: "rgba(6, 182, 212, 0.15)",
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: false
+                        },
+                        {
+                            label: "Expected Baseline (%)",
+                            data: data.humidity_expected,
+                            borderColor: "#10b981",
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ],
+                    "Humidity (%)"
+                );
+
+            } catch (err) {
+                console.error("Digital Twin error:", err);
+                showDigitalTwinEmptyMessage("No historical data available");
+            }
+        }
+
+        function createTwinLineChart(canvasId, chartKey, labels, datasets, yAxisTitle) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            if (twinCharts[chartKey]) {
+                twinCharts[chartKey].destroy();
+                twinCharts[chartKey] = null;
+            }
+
+            const ctx = canvas.getContext("2d");
+            twinCharts[chartKey] = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: "index",
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: "top",
+                            labels: {
+                                color: "#9ca3af",
+                                font: { family: "system-ui", size: 11, weight: "600" },
+                                boxWidth: 12,
+                                padding: 10
+                            }
+                        },
+                        tooltip: {
+                            mode: "index",
+                            intersect: false,
+                            backgroundColor: "#1f2937",
+                            titleColor: "#f9fafc",
+                            bodyColor: "#9ca3af",
+                            borderColor: "#374151",
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: "#9ca3af",
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 12
+                            },
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)"
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: yAxisTitle,
+                                color: "#9ca3af",
+                                font: { size: 11 }
+                            },
+                            ticks: {
+                                color: "#9ca3af",
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)"
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function showDigitalTwinEmptyMessage(msg) {
+            ["temp", "pressure", "humidity"].forEach(key => {
+                if (twinCharts[key]) {
+                    twinCharts[key].destroy();
+                    twinCharts[key] = null;
+                }
+            });
+            ["twinTempChart", "twinPressureChart", "twinHumidityChart"].forEach(id => {
+                const canvas = document.getElementById(id);
+                if (canvas && canvas.parentElement) {
+                    canvas.parentElement.querySelectorAll(".empty-msg-overlay").forEach(el => el.remove());
+                    const overlay = document.createElement("div");
+                    overlay.className = "empty-msg-overlay";
+                    overlay.style.cssText = "position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); font-size:13px; background:rgba(0,0,0,0.3); border-radius:8px;";
+                    overlay.textContent = msg;
+                    canvas.parentElement.appendChild(overlay);
+                }
+            });
+        }
+
+        // PREDICTIVE MAINTENANCE (PHASE 8)
+        async function loadMaintenance() {
+            try {
+                const res = await fetch(API_BASE + "/maintenance");
+                const data = await res.json();
+                const tbody = document.getElementById("maintTableBody");
+                if (!tbody) return;
+                tbody.innerHTML = "";
+
+                data.forEach(m => {
+                    const tr = document.createElement("tr");
+                    const statusClass = m.health_status === "Healthy" ? "badge-green" : (m.health_status === "Attention Required" ? "badge-amber" : "badge-red");
+                    tr.innerHTML = `
+                        <td><strong>${m.station_id}</strong></td>
+                        <td><span class="badge ${statusClass}">${m.health_status}</span></td>
+                        <td>${m.rolling_anomaly_rate}%</td>
+                        <td>${m.trend_slope}</td>
+                        <td>${m.est_days_to_maintenance !== null ? m.est_days_to_maintenance + ' days' : 'N/A'}</td>
+                        <td><button class="btn-sm" onclick="openWorkOrderModal('${m.station_id}')">📋 Work Order</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error("Maintenance load error:", err);
+            }
+        }
+
+        // FLEET INTELLIGENCE (PHASE 9)
+        async function loadFleetIntel() {
+            try {
+                const [sysRes, archRes] = await Promise.all([
+                    fetch(API_BASE + "/fleet/systemic"),
+                    fetch(API_BASE + "/fleet/archetypes")
+                ]);
+
+                const systemic = await sysRes.json();
+                const archetypes = await archRes.json();
+
+                const sysTbody = document.getElementById("sysTableBody");
+                if (sysTbody) {
+                    sysTbody.innerHTML = "";
+                    systemic.forEach(s => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td>${s.date || s.timestamp}</td>
+                            <td><span class="badge badge-amber">${s.root_cause}</span></td>
+                            <td>${s.affected_stations || s.stations || 'All'}</td>
+                            <td>${s.p_value !== undefined ? s.p_value : '<0.05'}</td>
+                        `;
+                        sysTbody.appendChild(tr);
+                    });
+                }
+
+                const archTbody = document.getElementById("archTableBody");
+                if (archTbody) {
+                    archTbody.innerHTML = "";
+                    archetypes.forEach(a => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td>Cluster ${a.cluster_id !== undefined ? a.cluster_id : (a.cluster !== undefined ? a.cluster : 0)}</td>
+                            <td>${a.occurrences || a.count || 0}</td>
+                            <td>${a.stations || a.affected_stations || 'Various'}</td>
+                            <td><span class="badge badge-purple">${a.dominant_cause || a.root_cause || 'Fault'}</span></td>
+                        `;
+                        archTbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error("Fleet intel load error:", err);
+            }
+        }
+
         // LIVE MAP (PHASE 3)
         function loadMap() {
             if (!map) {
