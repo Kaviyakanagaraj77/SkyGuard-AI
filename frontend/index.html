@@ -4,24 +4,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkyGuard AI | Real-Time AWS Anomaly Detection & Digital Twin</title>
-    <!-- Chart.js (bundled locally for offline hackathon venue resilience) -->
+    <title>SkyGuard AI | AWS Intelligence & Operations Platform</title>
+
+    <!-- Bundled Chart.js for offline hackathon venue resilience -->
     <script src="vendor_chart.js"></script>
+
+    <!-- Leaflet.js for Interactive AWS Station Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-card: #1e293b;
-            --bg-card-hover: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --bg-card-hover: #374151;
+            --text-primary: #f9fafc;
+            --text-secondary: #9ca3af;
             --accent-green: #10b981;
             --accent-blue: #3b82f6;
             --accent-purple: #8b5cf6;
             --accent-red: #ef4444;
             --accent-amber: #f59e0b;
-            --border-color: #334155;
-            --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            --accent-cyan: #06b6d4;
+            --border-color: #374151;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --sidebar-width: 250px;
+        }
+
+        body.light-theme {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --border-color: #e5e7eb;
         }
 
         * {
@@ -37,72 +55,271 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* LOGIN SCREEN */
+        .login-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0b0f19 100%);
+            padding: 20px;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+        }
+
+        .login-brand {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .login-logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .login-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .input-group-pass {
+            position: relative;
+        }
+
+        .pass-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        /* APPLICATION SHELL LAYOUT */
+        .app-shell {
+            display: none;
+            min-height: 100vh;
+        }
+
+        .app-shell.active {
+            display: flex;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 90;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .sidebar-title {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar-menu {
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .nav-item.active {
+            color: #ffffff;
+            background: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            background: var(--accent-red);
+            color: white;
+        }
+
+        /* MAIN CONTENT AREA */
+        .main-wrapper {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
 
         /* HEADER */
         header {
-            background: rgba(15, 23, 42, 0.95);
+            background: rgba(17, 24, 39, 0.95);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-color);
-            padding: 16px 32px;
+            padding: 14px 28px;
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 80;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .brand-container {
+        .header-status-group {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
-        .brand-logo {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
-            border-radius: 12px;
+        .status-pill {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
-        }
-
-        .brand-title {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #ffffff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand-subtitle {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: var(--accent-green);
-            padding: 6px 14px;
+            gap: 6px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+        }
+
+        .status-pill.online {
+            color: var(--accent-green);
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.1);
         }
 
         .pulse-dot {
@@ -110,116 +327,70 @@
             height: 8px;
             background-color: var(--accent-green);
             border-radius: 50%;
-            animation: pulse-ring 1.5s infinite;
+            animation: pulse 1.5s infinite;
         }
 
-        @keyframes pulse-ring {
+        @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
             70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
             100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
-        /* NAVIGATION BAR */
-        .nav-tabs {
-            display: flex;
-            gap: 8px;
-            background: #111827;
-            padding: 8px 32px;
-            border-bottom: 1px solid var(--border-color);
-            overflow-x: auto;
-        }
-
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
+        /* DEMO MODE BANNER */
+        .demo-mode-bar {
+            background: linear-gradient(90deg, #311b92, #4a148c);
+            border-bottom: 1px solid #6a1b9a;
+            padding: 10px 28px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .demo-presets {
+            display: flex;
             gap: 8px;
-            white-space: nowrap;
         }
 
-        .tab-btn:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
+        .demo-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        .tab-btn.active {
-            color: var(--text-primary);
-            background: var(--accent-blue);
-            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
+        .demo-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
-        /* MAIN CONTAINER */
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 28px 32px;
-            width: 100%;
+        /* CONTAINER VIEW PANELS */
+        .content-container {
+            padding: 28px;
             flex: 1;
         }
 
-        .tab-content {
+        .view-panel {
             display: none;
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.25s ease;
         }
 
-        .tab-content.active {
+        .view-panel.active {
             display: block;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* LIVE STREAM TICKER */
-        .live-ticker-bar {
-            display: none;
-            background: linear-gradient(90deg, #1e1b4b, #311b92);
-            border: 1px solid #4338ca;
-            padding: 12px 20px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            align-items: center;
-            gap: 12px;
-            font-size: 14px;
-            box-shadow: 0 4px 15px rgba(49, 27, 146, 0.3);
-        }
-
-        .live-ticker-bar.active {
-            display: flex;
-        }
-
-        .live-btn {
-            background: var(--accent-red);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .live-btn.active {
-            background: var(--accent-green);
-        }
-
-        /* KPI SUMMARY CARDS */
+        /* KPI CARDS GRID */
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 20px;
             margin-bottom: 28px;
         }
@@ -228,18 +399,9 @@
             background: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 22px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            padding: 20px;
             position: relative;
             overflow: hidden;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         }
 
         .kpi-card::before {
@@ -254,25 +416,23 @@
 
         .kpi-card.alert::before { background: var(--accent-red); }
         .kpi-card.healthy::before { background: var(--accent-green); }
-        .kpi-card.rate::before { background: var(--accent-amber); }
+        .kpi-card.amber::before { background: var(--accent-amber); }
 
-        .kpi-header {
-            font-size: 13px;
+        .kpi-title {
+            font-size: 12px;
             font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 8px;
         }
 
-        .kpi-value {
-            font-size: 36px;
+        .kpi-val {
+            font-size: 32px;
             font-weight: 800;
-            letter-spacing: -1px;
-            margin-bottom: 6px;
+            margin: 6px 0;
         }
 
-        .kpi-subtext {
+        .kpi-sub {
             font-size: 12px;
             color: var(--text-secondary);
         }
@@ -286,12 +446,12 @@
             margin-bottom: 28px;
         }
 
-        .section-header {
+        .section-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            padding-bottom: 14px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -303,121 +463,17 @@
             gap: 10px;
         }
 
-        .section-subtitle {
+        .section-sub {
             font-size: 13px;
             color: var(--text-secondary);
         }
 
-        /* STATION CARDS GRID */
-        .station-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-            gap: 20px;
-        }
-
-        .station-card {
-            background: #0f172a;
-            border: 1px solid var(--border-color);
+        /* STATION MAP CONTAINER */
+        #stationMap {
+            height: 420px;
             border-radius: 14px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            transition: all 0.2s ease;
-        }
-
-        .station-card:hover {
-            border-color: var(--accent-blue);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .station-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-
-        .station-id {
-            font-size: 17px;
-            font-weight: 700;
-            color: #ffffff;
-        }
-
-        .station-location {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .status-pill {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .status-pill.normal {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--accent-green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .status-pill.anomaly {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--accent-red);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .telemetry-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            padding: 6px 0;
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
-        }
-
-        .telemetry-label {
-            color: var(--text-secondary);
-        }
-
-        .telemetry-val {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .trust-gauge {
-            margin-top: 4px;
-        }
-
-        .trust-gauge-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .trust-gauge-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .trust-gauge-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.4s ease;
-        }
-
-        .root-cause-tag {
-            font-size: 12px;
-            color: var(--accent-amber);
-            background: rgba(245, 158, 11, 0.1);
-            padding: 6px 10px;
-            border-radius: 6px;
-            line-height: 1.4;
+            border: 1px solid var(--border-color);
+            z-index: 10;
         }
 
         /* TABLES */
@@ -428,827 +484,1199 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            text-align: left;
             font-size: 13px;
+            text-align: left;
         }
 
         th {
-            background: #111827;
+            background: var(--bg-secondary);
             color: var(--text-secondary);
             font-weight: 600;
-            padding: 14px 16px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-color);
-            text-transform: uppercase;
             font-size: 11px;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         td {
             padding: 14px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
         }
 
         tr:hover td {
             background: rgba(255, 255, 255, 0.02);
         }
 
-        .clickable-row {
-            cursor: pointer;
+        /* BADGES & TAGS */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            display: inline-block;
         }
 
-        .clickable-row:hover td {
-            background: rgba(59, 130, 246, 0.08) !important;
+        .badge-red { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-amber { background: rgba(245, 158, 11, 0.2); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+        /* BUTTONS */
+        .btn-sm {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sm:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
         }
 
         /* CHARTS CONTAINER */
         .chart-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
             gap: 20px;
         }
 
         .chart-wrapper {
-            background: #0f172a;
+            background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 18px;
-            height: 320px;
+            height: 300px;
             position: relative;
         }
 
-        .chart-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--text-primary);
-        }
-
-        /* SELECT CONTROLS */
-        .custom-select {
-            background: #0f172a;
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .custom-select:focus {
-            border-color: var(--accent-blue);
-        }
-
-        /* MODAL / EXPLAIN DRAWER */
-        .explain-box {
-            display: none;
-            background: #0f172a;
+        /* CHAT ASSISTANT WIDGET */
+        .chat-widget {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 360px;
+            background: var(--bg-card);
             border: 1px solid var(--accent-blue);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .explain-box.active {
-            display: block;
-        }
-
-        .shap-row {
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+            z-index: 900;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 10px 0;
-            font-size: 13px;
-        }
-
-        .shap-label {
-            width: 120px;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .shap-track {
-            flex: 1;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
+            flex-direction: column;
             overflow: hidden;
+            transition: transform 0.3s ease;
         }
 
-        .shap-fill {
-            height: 100%;
-            border-radius: 5px;
+        .chat-widget.collapsed {
+            transform: translateY(calc(100% - 50px));
         }
 
-        .shap-val {
-            width: 70px;
-            text-align: right;
-            font-weight: 700;
-        }
-
-        /* BUTTONS */
-        .action-btn {
-            background: var(--bg-card-hover);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+        .chat-header {
+            background: linear-gradient(135deg, #1e1b4b, #311b92);
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
 
-        .action-btn:hover {
+        .chat-body {
+            height: 280px;
+            padding: 14px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .chat-msg {
+            padding: 10px 14px;
+            border-radius: 10px;
+            max-width: 85%;
+            line-height: 1.4;
+        }
+
+        .chat-msg.bot {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border: 1px solid var(--border-color);
+        }
+
+        .chat-msg.user {
             background: var(--accent-blue);
-            border-color: var(--accent-blue);
+            color: white;
+            align-self: flex-end;
         }
 
-        /* FOOTER */
-        footer {
+        .chat-input-bar {
+            display: flex;
+            padding: 10px;
             border-top: 1px solid var(--border-color);
+            gap: 8px;
+        }
+
+        /* MODAL OVERLAYS */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-secondary);
-            background: #0b0f19;
-            margin-top: auto;
         }
 
-        /* BADGES */
-        .tag-badge {
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
+        .modal-overlay.active {
+            display: flex;
         }
 
-        .tag-red { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-        .tag-amber { background: rgba(245, 158, 11, 0.2); color: #fde68a; }
-        .tag-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
-        .tag-blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+
+        /* RESPONSIVE BREAKPOINTS */
+        @media (max-width: 1024px) {
+            :root { var(--sidebar-width): 210px; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main-wrapper { margin-left: 0; }
+            .chat-widget { width: calc(100vw - 32px); right: 16px; }
+        }
     </style>
 </head>
 
 <body>
 
-    <!-- HEADER -->
-    <header>
-        <div class="brand-container">
-            <div class="brand-logo">🌦️</div>
-            <div>
-                <div class="brand-title">SkyGuard AI v2</div>
-                <div class="brand-subtitle">SIH 2026 · MoES / IMD AWS Real-Time Monitoring & Digital Twin</div>
+    <!-- ================= PHASE 1: LOGIN PAGE ================= -->
+    <div class="login-wrapper" id="loginWrapper">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="login-logo">🌦️</div>
+                <div class="login-title">SkyGuard AI v2</div>
+                <div class="login-subtitle">AWS Intelligence & Operations Platform</div>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">Official Email</label>
+                    <input type="email" id="loginEmail" class="form-input" value="operator@skyguard.imd.gov.in" required />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-group-pass">
+                        <input type="password" id="loginPass" class="form-input" value="SkyGuard2026!" required />
+                        <button type="button" class="pass-toggle" onclick="togglePassVisibility()">👁️</button>
+                    </div>
+                </div>
+                <div class="form-options">
+                    <label><input type="checkbox" id="rememberMe" checked /> Remember Me</label>
+                    <a href="#" style="color: var(--accent-blue); text-decoration: none;" onclick="alert('For prototype access, use pre-configured credentials: operator@skyguard.imd.gov.in / SkyGuard2026!')">Forgot Password?</a>
+                </div>
+                <button type="submit" class="btn-primary">Sign In to Operations Platform</button>
+            </form>
+            <div style="text-align: center; margin-top: 20px; font-size: 12px; color: var(--text-secondary);">
+                SIH 2026 · Ministry of Earth Sciences / IMD
             </div>
         </div>
-        <div class="header-controls">
-            <button class="live-btn" id="liveToggleBtn" onclick="toggleLiveMode()">
-                🔴 Live Mode WS
-            </button>
-            <button class="action-btn" onclick="loadDashboard()">
-                ↻ Refresh Telemetry
-            </button>
-            <div class="status-badge">
-                <div class="pulse-dot"></div>
-                Backend Active
-            </div>
-        </div>
-    </header>
-
-    <!-- TAB NAVIGATION BAR -->
-    <div class="nav-tabs">
-        <button class="tab-btn active" onclick="switchTab('overview')">📡 Fleet Overview</button>
-        <button class="tab-btn" onclick="switchTab('digital-twin')">🪞 Digital Twin</button>
-        <button class="tab-btn" onclick="switchTab('xai')">🧠 XAI & Alert Inspector</button>
-        <button class="tab-btn" onclick="switchTab('maintenance')">🔧 Predictive Maintenance</button>
-        <button class="tab-btn" onclick="switchTab('fleet-intelligence')">🌐 Fleet Intelligence</button>
     </div>
 
-    <!-- MAIN CONTAINER -->
-    <div class="container">
 
-        <!-- LIVE STREAM TICKER -->
-        <div class="live-ticker-bar" id="liveTickerBar">
-            <div class="pulse-dot"></div>
-            <strong style="color: var(--accent-green)">LIVE WEBSOCKET STREAM:</strong>
-            <span id="liveTickerMsg">Listening for telemetry updates...</span>
+    <!-- ================= PHASE 2: APPLICATION SHELL ================= -->
+    <div class="app-shell" id="appShell">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🌦️</div>
+                <div>
+                    <div class="sidebar-title">SkyGuard AI</div>
+                    <div style="font-size: 11px; color: var(--text-secondary)">MoES / IMD AWS</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <a class="nav-item active" onclick="switchView('dashboard')"><span>📊</span> Dashboard Overview</a>
+                <a class="nav-item" onclick="switchView('map')"><span>🗺️</span> Live Station Map</a>
+                <a class="nav-item" onclick="switchView('fleet')"><span>📡</span> Fleet Overview</a>
+                <a class="nav-item" onclick="switchView('twin')"><span>🪞</span> Digital Twin</a>
+                <a class="nav-item" onclick="switchView('xai')"><span>🧠</span> XAI Inspector</a>
+                <a class="nav-item" onclick="switchView('alerts')"><span>🚨</span> Smart Alert Center <span class="nav-badge" id="alertBadge">3</span></a>
+                <a class="nav-item" onclick="switchView('timeline')"><span>⏳</span> Anomaly Timeline</a>
+                <a class="nav-item" onclick="switchView('maintenance')"><span>🔧</span> Predictive Maintenance</a>
+                <a class="nav-item" onclick="switchView('fleet-intel')"><span>🌐</span> Fleet Intelligence</a>
+                <a class="nav-item" onclick="switchView('simulator')"><span>🧪</span> What-If Simulator</a>
+                <a class="nav-item" onclick="switchView('work-orders')"><span>📋</span> Work Orders</a>
+                <a class="nav-item" onclick="switchView('reports')"><span>📄</span> Incident Reports</a>
+                <a class="nav-item" onclick="switchView('settings')"><span>⚙️</span> Settings</a>
+                <a class="nav-item" onclick="switchView('profile')"><span>👤</span> User Profile</a>
+            </nav>
+
+            <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                <button class="btn-sm" style="width: 100%; text-align: center;" onclick="handleLogout()">🚪 Sign Out</button>
+            </div>
+        </aside>
+
+        <!-- MAIN WRAPPER -->
+        <div class="main-wrapper">
+
+            <!-- HEADER -->
+            <header>
+                <div>
+                    <h2 style="font-size: 18px; font-weight: 700;" id="pageTitle">Dashboard Overview</h2>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="pageSub">AWS Network Operational Status</div>
+                </div>
+
+                <div class="header-status-group">
+                    <div class="status-pill online" id="backendPill">
+                        <div class="pulse-dot"></div>
+                        Backend Active (<span id="apiHostLabel">Render Production</span>)
+                    </div>
+                    <div class="status-pill" id="wsPill" style="color: var(--accent-cyan);">
+                        ⚡ WS Stream Ready
+                    </div>
+                    <div style="font-size: 13px; font-weight: 600;">
+                        👤 <span id="userNavName">Dr. K. Sharma</span> (Operator)
+                    </div>
+                </div>
+            </header>
+
+            <!-- PHASE 14: SIH DEMO MODE BANNER -->
+            <div class="demo-mode-bar">
+                <div>
+                    <strong>🎬 SIH 2026 Presentation Demo Mode Active</strong> — Quick Jump Presets:
+                </div>
+                <div class="demo-presets">
+                    <button class="demo-btn" onclick="runDemoPreset('frozen')">1. Frozen Sensor (AWS_003)</button>
+                    <button class="demo-btn" onclick="runDemoPreset('systemic')">2. Systemic Pressure Event</button>
+                    <button class="demo-btn" onclick="runDemoPreset('maintenance')">3. Degradation Forecast</button>
+                </div>
+            </div>
+
+            <!-- VIEW PANELS CONTAINER -->
+            <div class="content-container">
+
+                <!-- PANEL 1: DASHBOARD OVERVIEW -->
+                <div id="view-dashboard" class="view-panel active">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-title">Total Processed Observations</div>
+                            <div class="kpi-val" id="kpiTotal">10,800</div>
+                            <div class="kpi-sub">AWS sensor readings</div>
+                        </div>
+                        <div class="kpi-card alert">
+                            <div class="kpi-title">Flagged Anomalies</div>
+                            <div class="kpi-val" id="kpiAnomalies" style="color: var(--accent-red)">2,450</div>
+                            <div class="kpi-sub">Detected across fleet</div>
+                        </div>
+                        <div class="kpi-card amber">
+                            <div class="kpi-title">Fleet Anomaly Rate</div>
+                            <div class="kpi-val" id="kpiRate" style="color: var(--accent-amber)">22.7%</div>
+                            <div class="kpi-sub">Multi-layer fused score</div>
+                        </div>
+                        <div class="kpi-card healthy">
+                            <div class="kpi-title">Active Reporting Stations</div>
+                            <div class="kpi-val" style="color: var(--accent-green)">5 / 5</div>
+                            <div class="kpi-sub">Delhi, Mumbai, Chennai, Kolkata, Bengaluru</div>
+                        </div>
+                    </div>
+
+                    <!-- PHASE 6: STATION HEALTH SCORE CARDS -->
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🏥 Station Health Score Engine (0–100)</div>
+                                <div class="section-sub">Quantified metric combining Data-Trust score, recent anomaly frequency, and active alerts</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;" id="healthScoreGrid"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL 2: LIVE STATION MAP (PHASE 3) -->
+                <div id="view-map" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🗺️ Geographic AWS Station Map</div>
+                                <div class="section-sub">Interactive status map showing regional Indian AWS nodes (*Prototype Regional Coordinates*)</div>
+                            </div>
+                            <button class="btn-sm" onclick="loadMapMarkers()">↻ Refresh Map</button>
+                        </div>
+                        <div id="stationMap"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL 3: FLEET OVERVIEW -->
+                <div id="view-fleet" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">📡 AWS Fleet Real-Time Status</div>
+                                <div class="section-sub">Live telemetry readings, trust scores, and probable root cause classification</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;" id="fleetGrid"></div>
+                    </div>
+                </div>
+
+                <!-- PANEL 4: DIGITAL TWIN -->
+                <div id="view-twin" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🪞 AWS Digital Twin Analytics</div>
+                                <div class="section-sub">Reported actual values vs. climatologically expected diurnal/seasonal baseline</div>
+                            </div>
+                            <select class="form-input" style="width: auto;" id="twinStationSelect" onchange="loadDigitalTwin()">
+                                <option value="AWS_001">AWS_001 - New Delhi (NCR)</option>
+                                <option value="AWS_002">AWS_002 - Mumbai (Maharashtra)</option>
+                                <option value="AWS_003">AWS_003 - Chennai (Tamil Nadu)</option>
+                                <option value="AWS_004">AWS_004 - Kolkata (West Bengal)</option>
+                                <option value="AWS_005">AWS_005 - Bengaluru (Karnataka)</option>
+                            </select>
+                        </div>
+                        <div class="chart-grid" style="grid-template-columns: 1fr;">
+                            <div class="chart-wrapper" style="height: 250px; margin-bottom: 16px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">🌡️ Temperature: Actual vs Expected (°C)</div>
+                                <canvas id="twinTempChart"></canvas>
+                            </div>
+                            <div class="chart-wrapper" style="height: 250px; margin-bottom: 16px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">🌬️ Pressure: Actual vs Expected (hPa)</div>
+                                <canvas id="twinPressureChart"></canvas>
+                            </div>
+                            <div class="chart-wrapper" style="height: 250px;">
+                                <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">💧 Humidity: Actual vs Expected (%)</div>
+                                <canvas id="twinHumidityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 5: XAI INSPECTOR -->
+                <div id="view-xai" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🧠 SHAP Explainable AI Alert Inspector</div>
+                                <div class="section-subtitle">Multivariate feature contribution breakdown for flagged anomalies</div>
+                            </div>
+                        </div>
+                        <div id="xaiInspectorBox" style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                            <p style="color: var(--text-secondary)">Click any alert in the Smart Alert Center to inspect feature contributions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 6: SMART ALERT CENTER (PHASE 4) -->
+                <div id="view-alerts" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🚨 Smart Alert Operations Center</div>
+                                <div class="section-sub">Acknowledge, resolve, and inspect multi-layer anomaly alerts</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-sm" onclick="filterAlerts('ALL')">All</button>
+                                <button class="btn-sm" onclick="filterAlerts('CRITICAL')">Critical</button>
+                                <button class="btn-sm" onclick="filterAlerts('WARNING')">Warning</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Station</th>
+                                        <th>Severity</th>
+                                        <th>Root Cause Diagnosis</th>
+                                        <th>Confidence</th>
+                                        <th>Trust Score</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alertsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 7: ANOMALY TIMELINE (PHASE 5) -->
+                <div id="view-timeline" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">⏳ Historical Anomaly Timeline</div>
+                                <div class="section-sub">Chronological event log across the observation network</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Station ID</th>
+                                        <th>Anomaly Type</th>
+                                        <th>Severity</th>
+                                        <th>Confidence Score</th>
+                                        <th>Root Cause</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="timelineTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 8: PREDICTIVE MAINTENANCE -->
+                <div id="view-maintenance" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🔧 Predictive Maintenance & Degradation Forecast</div>
+                                <div class="section-sub">7-day rolling anomaly trend fitting to predict sensor failure before catastrophe</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Station ID</th>
+                                        <th>Health Status</th>
+                                        <th>Rolling Anomaly Rate</th>
+                                        <th>Trend Slope (/hr)</th>
+                                        <th>Est. Days to Maintenance</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="maintTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 9: FLEET INTELLIGENCE -->
+                <div id="view-fleet-intel" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🌐 Fleet Intelligence — Network-Wide Analysis</div>
+                                <div class="section-sub">Binomial significance testing (p &lt; 0.05) & KMeans anomaly archetype clusters</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+                            <div>
+                                <h4 style="margin-bottom: 12px; color: var(--accent-amber)">⚡ Systemic Events (Statistically Significant)</h4>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr><th>Date</th><th>Root Cause</th><th>Stations</th><th>p-value</th></tr>
+                                        </thead>
+                                        <tbody id="sysTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 12px; color: var(--accent-purple)">🧩 Recurring Anomaly Signature Archetypes</h4>
+                                <div class="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr><th>Cluster</th><th>Occurrences</th><th>Stations</th><th>Dominant Cause</th></tr>
+                                        </thead>
+                                        <tbody id="archTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 10: WHAT-IF SENSOR SIMULATOR (PHASE 7) -->
+                <div id="view-simulator" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">🧪 What-If Sensor Simulator Engine</div>
+                                <div class="section-sub">Test custom meteorological parameters through SkyGuard's 5-Layer AI Pipeline (*Simulation Engine*)</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                            <div>
+                                <div class="form-group">
+                                    <label class="form-label">Temperature (°C)</label>
+                                    <input type="number" step="0.1" id="simTemp" class="form-input" value="46.5" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Atmospheric Pressure (hPa)</label>
+                                    <input type="number" step="0.1" id="simPressure" class="form-input" value="1004.2" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Relative Humidity (%)</label>
+                                    <input type="number" step="0.1" id="simHumidity" class="form-input" value="92.0" />
+                                </div>
+                                <button class="btn-primary" onclick="runWhatIfSimulation()">⚡ Execute 5-Layer AI Analysis</button>
+                            </div>
+                            <div id="simResultBox" style="background: var(--bg-secondary); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                <p style="color: var(--text-secondary)">Enter telemetry parameters and click Execute to test detection layers.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 11: MAINTENANCE WORK ORDERS (PHASE 8) -->
+                <div id="view-work-orders" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">📋 Maintenance Work Order Management</div>
+                                <div class="section-sub">Track field technician repair assignments and status</div>
+                            </div>
+                            <button class="btn-sm" onclick="openWorkOrderModal()">+ Create Work Order</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Work Order ID</th>
+                                        <th>Station</th>
+                                        <th>Issue Description</th>
+                                        <th>Priority</th>
+                                        <th>Assigned Team</th>
+                                        <th>Created Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workOrderTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 12: INCIDENT REPORT GENERATOR (PHASE 9) -->
+                <div id="view-reports" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">📄 Incident Report Generator</div>
+                                <div class="section-sub">Generate official IMD/MoES branded meteorological anomaly reports</div>
+                            </div>
+                            <button class="btn-sm" onclick="window.print()">🖨️ Print Report</button>
+                        </div>
+                        <div id="reportPrintArea" style="background: var(--bg-secondary); padding: 28px; border-radius: 14px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
+                                <div>
+                                    <h2 style="color: var(--accent-blue)">🌦️ SkyGuard AI Operational Incident Report</h2>
+                                    <div>Ministry of Earth Sciences / India Meteorological Department</div>
+                                </div>
+                                <div style="text-align: right; font-size: 12px; color: var(--text-secondary)">
+                                    Report Ref: <strong id="repRef">SG-INC-2026-003</strong><br>
+                                    Date: <span id="repDate">2026-09-06</span>
+                                </div>
+                            </div>
+                            <div id="reportContentDetails">
+                                <p style="color: var(--text-secondary)">Select an anomaly event from the Smart Alert Center to view or print an Incident Report.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 13: SETTINGS (PHASE 11) -->
+                <div id="view-settings" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">⚙️ System Settings & Preferences</div>
+                                <div class="section-sub">Configure display parameters, refresh intervals, and notifications</div>
+                            </div>
+                        </div>
+                        <div style="max-width: 600px;">
+                            <div class="form-group">
+                                <label class="form-label">Appearance Theme</label>
+                                <select class="form-input" id="themeSelect" onchange="toggleTheme()">
+                                    <option value="dark">Dark Mode (Operations Default)</option>
+                                    <option value="light">Light Mode</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Telemetry Auto-Refresh Interval</label>
+                                <select class="form-input" id="refreshIntervalSelect">
+                                    <option value="15000">15 Seconds</option>
+                                    <option value="30000">30 Seconds</option>
+                                    <option value="60000">60 Seconds</option>
+                                    <option value="0">Manual Refresh Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Temperature Unit</label>
+                                <select class="form-input" id="unitSelect">
+                                    <option value="C">Celsius (°C)</option>
+                                    <option value="F">Fahrenheit (°F)</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" style="width: auto;" onclick="alert('Settings saved successfully!')">💾 Save Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 14: USER PROFILE (PHASE 12) -->
+                <div id="view-profile" class="view-panel">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <div>
+                                <div class="section-title">👤 User Profile & Access Control</div>
+                                <div class="section-sub">Account details and role permissions</div>
+                            </div>
+                        </div>
+                        <div style="max-width: 500px; background: var(--bg-secondary); padding: 20px; border-radius: 14px; border: 1px solid var(--border-color);">
+                            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                                <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--accent-blue); display: flex; align-items: center; justify-content: center; font-size: 28px;">👤</div>
+                                <div>
+                                    <h3 style="font-size: 18px;">Dr. K. Sharma</h3>
+                                    <div style="color: var(--accent-green); font-size: 13px; font-weight: 600;">Senior Systems Engineer (MoES)</div>
+                                </div>
+                            </div>
+                            <div style="font-size: 13px; display: flex; flex-direction: column; gap: 10px;">
+                                <div><strong>Email:</strong> operator@skyguard.imd.gov.in</div>
+                                <div><strong>Role:</strong> Administrator / Operator</div>
+                                <div><strong>Account Status:</strong> <span class="badge badge-green">Active / Verified</span></div>
+                                <div><strong>Last Login:</strong> <span id="lastLoginTime">Today at 19:20 IST</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
+    </div>
 
-        <!-- ================= TAB 1: FLEET OVERVIEW ================= -->
-        <div id="tab-overview" class="tab-content active">
 
-            <!-- KPI SUMMARY CARDS -->
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-header">Total Observations</div>
-                    <div class="kpi-value" id="kpiTotal">-</div>
-                    <div class="kpi-subtext">Processed AWS telemetry samples</div>
-                </div>
-                <div class="kpi-card alert">
-                    <div class="kpi-header">Flagged Anomalies</div>
-                    <div class="kpi-value" id="kpiAnomalies" style="color: var(--accent-red);">-</div>
-                    <div class="kpi-subtext">Multi-layer detected faults</div>
-                </div>
-                <div class="kpi-card rate">
-                    <div class="kpi-header">Network Anomaly Rate</div>
-                    <div class="kpi-value" id="kpiRate" style="color: var(--accent-amber);">-</div>
-                    <div class="kpi-subtext">Percent of fleet data flagged</div>
-                </div>
-                <div class="kpi-card healthy">
-                    <div class="kpi-header">Active Stations</div>
-                    <div class="kpi-value" id="kpiStations" style="color: var(--accent-green);">5</div>
-                    <div class="kpi-subtext">Real-time reporting AWS nodes</div>
-                </div>
+    <!-- PHASE 10: "ASK SKYGUARD" OPERATOR ASSISTANT -->
+    <div class="chat-widget collapsed" id="chatWidget">
+        <div class="chat-header" onclick="toggleChatWidget()">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: white;">
+                🤖 Ask SkyGuard (Telemetry Assistant)
             </div>
-
-            <!-- AWS STATION GRID -->
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">📡 Automatic Weather Station Fleet</div>
-                        <div class="section-subtitle">Real-time status, temperature, pressure, humidity & data-trust scores</div>
-                    </div>
-                </div>
-                <div class="station-grid" id="stationGrid"></div>
-            </div>
-
-            <!-- TELEMETRY COMPARISON CHARTS -->
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">📊 Live Fleet Telemetry Overview</div>
-                        <div class="section-subtitle">Comparative readings across active weather stations</div>
-                    </div>
-                </div>
-                <div class="chart-grid">
-                    <div class="chart-wrapper">
-                        <div class="chart-title">🌡️ Temperature (°C)</div>
-                        <canvas id="overviewTempChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper">
-                        <div class="chart-title">🌬️ Pressure (hPa)</div>
-                        <canvas id="overviewPressureChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper">
-                        <div class="chart-title">💧 Humidity (%)</div>
-                        <canvas id="overviewHumidityChart"></canvas>
-                    </div>
-                </div>
+            <span id="chatToggleIcon" style="color: white;">▲</span>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="chat-msg bot">
+                Hello! I am your SkyGuard Telemetry Assistant. Ask me questions about AWS health, anomalies, or system metrics.
             </div>
         </div>
+        <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="form-input" placeholder="Ask e.g. Why is AWS_003 anomalous?" onkeypress="if(event.key==='Enter') sendChatMessage()" />
+            <button class="btn-sm" onclick="sendChatMessage()">Send</button>
+        </div>
+    </div>
 
 
-        <!-- ================= TAB 2: DIGITAL TWIN ================= -->
-        <div id="tab-digital-twin" class="tab-content">
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">🪞 AWS Digital Twin Baseline Analytics</div>
-                        <div class="section-subtitle">Compares actual reported sensor values against climatologically expected diurnal/seasonal baselines</div>
-                    </div>
-                    <select class="custom-select" id="twinStationSelect" onchange="loadDigitalTwin()">
-                        <option value="AWS_001">AWS_001 - New Delhi (NCR)</option>
-                        <option value="AWS_002">AWS_002 - Mumbai (Maharashtra)</option>
-                        <option value="AWS_003">AWS_003 - Chennai (Tamil Nadu)</option>
-                        <option value="AWS_004">AWS_004 - Kolkata (West Bengal)</option>
-                        <option value="AWS_005">AWS_005 - Bengaluru (Karnataka)</option>
+    <!-- WORK ORDER MODAL -->
+    <div class="modal-overlay" id="woModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom: 16px;">📋 Create Maintenance Work Order</h3>
+            <form onsubmit="handleCreateWorkOrder(event)">
+                <div class="form-group">
+                    <label class="form-label">Station ID</label>
+                    <select class="form-input" id="woStation">
+                        <option value="AWS_003">AWS_003 - Chennai</option>
+                        <option value="AWS_001">AWS_001 - New Delhi</option>
+                        <option value="AWS_002">AWS_002 - Mumbai</option>
+                        <option value="AWS_004">AWS_004 - Kolkata</option>
+                        <option value="AWS_005">AWS_005 - Bengaluru</option>
                     </select>
                 </div>
-                <div class="chart-grid" style="grid-template-columns: 1fr;">
-                    <div class="chart-wrapper" style="height: 280px; margin-bottom: 20px;">
-                        <div class="chart-title">🌡️ Temperature: Reported Actual vs Expected Baseline (°C)</div>
-                        <canvas id="twinTempChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper" style="height: 280px; margin-bottom: 20px;">
-                        <div class="chart-title">🌬️ Atmospheric Pressure: Reported Actual vs Expected Baseline (hPa)</div>
-                        <canvas id="twinPressureChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper" style="height: 280px;">
-                        <div class="chart-title">💧 Relative Humidity: Reported Actual vs Expected Baseline (%)</div>
-                        <canvas id="twinHumidityChart"></canvas>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Detected Issue</label>
+                    <input type="text" id="woIssue" class="form-input" value="Sensor Stuck / Localized Anomaly" required />
                 </div>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">Priority Level</label>
+                    <select class="form-input" id="woPriority">
+                        <option value="High">High Priority</option>
+                        <option value="Emergency">Emergency</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assigned Field Team</label>
+                    <input type="text" id="woTeam" class="form-input" value="Regional Maintenance Team Alpha" required />
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-sm" onclick="closeWorkOrderModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" style="width: auto;">Create Order</button>
+                </div>
+            </form>
         </div>
-
-
-        <!-- ================= TAB 3: XAI & ALERT INSPECTOR ================= -->
-        <div id="tab-xai" class="tab-content">
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">🧠 Explainable AI (SHAP) Alert Inspector</div>
-                        <div class="section-subtitle">Click any detected alert to inspect SHAP feature contributions and rolling-median imputed values</div>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Station ID</th>
-                                <th>Confidence</th>
-                                <th>Trust Score</th>
-                                <th>Temp</th>
-                                <th>Pressure</th>
-                                <th>Humidity</th>
-                                <th>Root Cause Diagnosis</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alertsTableBody"></tbody>
-                    </table>
-                </div>
-
-                <!-- SHAP EXPLAIN DRAWER -->
-                <div class="explain-box" id="explainBox">
-                    <div style="display:flex; justify-between; align-items:center; margin-bottom: 12px;">
-                        <h3 style="color: var(--accent-blue)">🧠 SHAP Multivariate Explanation Breakdown</h3>
-                        <span id="explainStationTag" class="tag-badge tag-amber">Station Details</span>
-                    </div>
-                    <p style="font-size:13px; color: var(--text-secondary); margin-bottom: 16px;" id="explainMetaText"></p>
-                    <div id="shapBarsContainer"></div>
-                    <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border-color); font-size: 13px;">
-                        <strong style="color: var(--accent-green)">Suggested Corrected Values (Imputed):</strong>
-                        <span id="explainCorrectedText" style="color: var(--text-primary); margin-left: 8px;"></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- ================= TAB 4: PREDICTIVE MAINTENANCE ================= -->
-        <div id="tab-maintenance" class="tab-content">
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">🔧 Predictive Maintenance & Sensor Degradation Forecast</div>
-                        <div class="section-subtitle">7-day rolling anomaly trend fitting to predict sensor degradation before catastrophic failure</div>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Station ID</th>
-                                <th>Health Status</th>
-                                <th>Recent Rolling Anomaly Rate</th>
-                                <th>Trend Slope (/hr)</th>
-                                <th>Est. Days to Maintenance</th>
-                            </tr>
-                        </thead>
-                        <tbody id="maintenanceTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-
-        <!-- ================= TAB 5: FLEET INTELLIGENCE ================= -->
-        <div id="tab-fleet-intelligence" class="tab-content">
-            <div class="section-card">
-                <div class="section-header">
-                    <div>
-                        <div class="section-title">🌐 Fleet Intelligence — Systemic vs Isolated Analysis</div>
-                        <div class="section-subtitle">Binomial statistical significance testing (p &lt; 0.05) & KMeans anomaly archetype signature clusters</div>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
-                    <div>
-                        <h3 style="font-size: 15px; margin-bottom: 14px; color: var(--accent-amber);">
-                            ⚡ Systemic Events (Statistically Significant p &lt; 0.05)
-                        </h3>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Root Cause</th>
-                                        <th>Stations Affected</th>
-                                        <th>p-value</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="systemicTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 style="font-size: 15px; margin-bottom: 14px; color: var(--accent-purple);">
-                            🧩 Recurring Anomaly Signature Archetypes
-                        </h3>
-                        <div class="table-responsive">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Cluster</th>
-                                        <th>Occurrences</th>
-                                        <th>Stations Affected</th>
-                                        <th>Dominant Cause</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="archetypeTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <!-- FOOTER -->
-    <footer>
-        SkyGuard AI v2 • SIH 2026 Problem Statement 26073 • Ministry of Earth Sciences (MoES) / India Meteorological Department (IMD)
-    </footer>
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
-        const API = "https://skyguard-ai-d2jb.onrender.com";
+        // API Base URL (Render Production with local fallback)
+        let API_BASE = "https://skyguard-ai-d2jb.onrender.com";
 
-        let overviewTempChart = null;
-        let overviewPressureChart = null;
-        let overviewHumidityChart = null;
-        let twinTempChart = null;
-        let twinPressureChart = null;
-        let twinHumidityChart = null;
-
-        // TAB SWITCHING LOGIC
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-
-            const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
-            if (targetBtn) targetBtn.classList.add('active');
-
-            const targetContent = document.getElementById('tab-' + tabId);
-            if (targetContent) targetContent.classList.add('active');
-
-            if (tabId === 'digital-twin') loadDigitalTwin();
-            if (tabId === 'xai') loadAlerts();
-            if (tabId === 'maintenance') loadMaintenance();
-            if (tabId === 'fleet-intelligence') loadFleetIntelligence();
+        // Auto-detect local backend if running locally
+        if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost") {
+            API_BASE = "http://127.0.0.1:8000";
         }
 
-        // TRUST SCORE COLOR UTILITY
-        function getTrustColor(score) {
-            if (score === null || score === undefined) return '#94a3b8';
-            if (score >= 80) return '#10b981';
-            if (score >= 60) return '#f59e0b';
-            if (score >= 40) return '#f97316';
-            return '#ef4444';
+        let map = null;
+        let markers = {};
+
+        // AUTHENTICATION LOGIC (PHASE 1)
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById("loginEmail").value;
+            const pass = document.getElementById("loginPass").value;
+
+            // Prototype credential verification
+            if (email && pass) {
+                localStorage.setItem("skyguard_user", JSON.stringify({ email, role: "Senior Systems Engineer", name: "Dr. K. Sharma" }));
+                document.getElementById("loginWrapper").style.display = "none";
+                document.getElementById("appShell").classList.add("active");
+                initApp();
+            }
         }
 
-        // LOAD OVERVIEW DASHBOARD
-        async function loadDashboard() {
+        function handleLogout() {
+            localStorage.removeItem("skyguard_user");
+            window.location.reload();
+        }
+
+        function togglePassVisibility() {
+            const el = document.getElementById("loginPass");
+            el.type = el.type === "password" ? "text" : "password";
+        }
+
+        // VIEW SWITCHING (PHASE 2)
+        function switchView(viewId) {
+            document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+            document.querySelectorAll(".view-panel").forEach(panel => panel.classList.remove("active"));
+
+            const targetNav = Array.from(document.querySelectorAll(".nav-item")).find(a => a.getAttribute("onclick").includes(viewId));
+            if (targetNav) targetNav.classList.add("active");
+
+            const targetPanel = document.getElementById("view-" + viewId);
+            if (targetPanel) targetPanel.classList.add("active");
+
+            const titles = {
+                'dashboard': 'Dashboard Overview', 'map': 'Live AWS Station Map', 'fleet': 'Fleet Overview',
+                'twin': 'Digital Twin Baseline', 'xai': 'SHAP XAI Inspector', 'alerts': 'Smart Alert Center',
+                'timeline': 'Historical Anomaly Timeline', 'maintenance': 'Predictive Maintenance Forecast',
+                'fleet-intel': 'Fleet Intelligence Analysis', 'simulator': 'What-If Sensor Simulator',
+                'work-orders': 'Maintenance Work Orders', 'reports': 'Incident Report Generator',
+                'settings': 'System Settings', 'profile': 'User Profile'
+            };
+            document.getElementById("pageTitle").textContent = titles[viewId] || 'Operations Platform';
+
+            if (viewId === 'map') loadMap();
+            if (viewId === 'twin') loadDigitalTwin();
+            if (viewId === 'maintenance') loadMaintenance();
+            if (viewId === 'fleet-intel') loadFleetIntel();
+        }
+
+        // INIT APP
+        function initApp() {
+            document.getElementById("apiHostLabel").textContent = API_BASE.includes("render.com") ? "Render Production" : "Local Fast-API";
+            loadDashboardData();
+            loadAlertsData();
+            loadTimelineData();
+            loadWorkOrders();
+            setInterval(loadDashboardData, 15000);
+        }
+
+        // LOAD DASHBOARD DATA
+        async function loadDashboardData() {
             try {
-                // Fetch Summary
-                const summaryRes = await fetch(API + "/summary");
+                const [summaryRes, stationsRes] = await Promise.all([
+                    fetch(API_BASE + "/summary"),
+                    fetch(API_BASE + "/stations")
+                ]);
+
                 const summary = await summaryRes.json();
+                const stations = await stationsRes.json();
+
                 document.getElementById("kpiTotal").textContent = summary.total_readings.toLocaleString();
                 document.getElementById("kpiAnomalies").textContent = summary.anomalies.toLocaleString();
                 document.getElementById("kpiRate").textContent = summary.anomaly_rate + "%";
 
-                // Fetch Stations
-                const stationsRes = await fetch(API + "/stations");
-                const stations = await stationsRes.json();
-                document.getElementById("kpiStations").textContent = stations.length;
+                renderHealthScores(stations);
+                renderFleetCards(stations);
+            } catch (err) {
+                console.error("Data load error:", err);
+            }
+        }
 
-                const grid = document.getElementById("stationGrid");
-                grid.innerHTML = "";
+        // HEALTH SCORE ENGINE (PHASE 6)
+        function renderHealthScores(stations) {
+            const grid = document.getElementById("healthScoreGrid");
+            grid.innerHTML = "";
 
-                const labels = [];
-                const temps = [];
-                const pressures = [];
-                const humidities = [];
+            stations.forEach(s => {
+                const isAnomaly = s.predicted_anomaly === 1;
+                // Transparent formula: Trust score minus severity penalty
+                let score = Math.round(s.trust_score || 85);
+                if (isAnomaly) score = Math.max(15, score - 35);
+
+                const statusText = score >= 80 ? "Healthy" : (score >= 50 ? "Attention Required" : "Critical Fault");
+                const badgeCls = score >= 80 ? "badge-green" : (score >= 50 ? "badge-amber" : "badge-red");
+
+                const card = document.createElement("div");
+                card.style.background = "var(--bg-secondary)";
+                card.style.padding = "16px";
+                card.style.borderRadius = "12px";
+                card.style.border = "1px solid var(--border-color)";
+                card.innerHTML = `
+                    <div style="font-size: 15px; font-weight: 700;">${s.station_id}</div>
+                    <div style="font-size: 28px; font-weight: 800; margin: 6px 0; color: ${score >= 80 ? '#10b981' : (score >= 50 ? '#f59e0b' : '#ef4444')}">${score}<span style="font-size: 14px; color: var(--text-secondary)">/100</span></div>
+                    <span class="badge ${badgeCls}">${statusText}</span>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">Trust: ${s.trust_score}% | Anomaly: ${isAnomaly ? 'Yes' : 'No'}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // RENDER FLEET CARDS
+        function renderFleetCards(stations) {
+            const grid = document.getElementById("fleetGrid");
+            grid.innerHTML = "";
+
+            stations.forEach(s => {
+                const isAnomaly = s.predicted_anomaly === 1;
+                const card = document.createElement("div");
+                card.style.background = "var(--bg-secondary)";
+                card.style.padding = "18px";
+                card.style.borderRadius = "14px";
+                card.style.border = "1px solid var(--border-color)";
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
+                        <div>
+                            <strong style="font-size: 16px;">${s.station_id}</strong>
+                            <div style="font-size: 11px; color: var(--text-secondary);">📍 ${s.location || s.station_id}</div>
+                        </div>
+                        <span class="badge ${isAnomaly ? 'badge-red' : 'badge-green'}">${isAnomaly ? '⚠️ ANOMALY' : '✓ HEALTHY'}</span>
+                    </div>
+                    <div style="font-size: 13px; display:flex; flex-direction:column; gap:6px;">
+                        <div>Temp: <strong>${s.temperature ?? 'N/A'} °C</strong></div>
+                        <div>Pressure: <strong>${s.pressure ?? 'N/A'} hPa</strong></div>
+                        <div>Humidity: <strong>${s.humidity ?? 'N/A'} %</strong></div>
+                        <div>Trust Score: <strong>${s.trust_score}%</strong></div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // LIVE MAP (PHASE 3)
+        function loadMap() {
+            if (!map) {
+                map = L.map('stationMap').setView([20.5937, 78.9629], 5);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap | SkyGuard AI'
+                }).addTo(map);
+            }
+            loadMapMarkers();
+        }
+
+        async function loadMapMarkers() {
+            try {
+                const res = await fetch(API_BASE + "/stations");
+                const stations = await res.json();
 
                 stations.forEach(s => {
-                    labels.push(s.station_id);
-                    temps.push(s.temperature);
-                    pressures.push(s.pressure);
-                    humidities.push(s.humidity);
-
                     const isAnomaly = s.predicted_anomaly === 1;
-                    const card = document.createElement("div");
-                    card.className = "station-card";
-                    card.innerHTML = `
-                        <div class="station-head">
-                            <div>
-                                <div class="station-id">${s.station_id}</div>
-                                <div class="station-location">📍 ${s.location || s.station_id} (${s.elevation || '100m'})</div>
-                            </div>
-                            <span class="status-pill ${isAnomaly ? 'anomaly' : 'normal'}">
-                                ${isAnomaly ? '⚠️ ANOMALY' : '✓ HEALTHY'}
-                            </span>
-                        </div>
-                        <div>
-                            <div class="telemetry-row">
-                                <span class="telemetry-label">Temperature:</span>
-                                <span class="telemetry-val">${s.temperature !== null ? s.temperature + ' °C' : 'N/A'}</span>
-                            </div>
-                            <div class="telemetry-row">
-                                <span class="telemetry-label">Atm. Pressure:</span>
-                                <span class="telemetry-val">${s.pressure !== null ? s.pressure + ' hPa' : 'N/A'}</span>
-                            </div>
-                            <div class="telemetry-row">
-                                <span class="telemetry-label">Humidity:</span>
-                                <span class="telemetry-val">${s.humidity !== null ? s.humidity + ' %' : 'N/A'}</span>
-                            </div>
-                            <div class="telemetry-row">
-                                <span class="telemetry-label">Confidence:</span>
-                                <span class="telemetry-val">${s.confidence_score}</span>
-                            </div>
-                        </div>
-                        <div class="trust-gauge">
-                            <div class="trust-gauge-header">
-                                <span>Data Trust Score</span>
-                                <strong>${s.trust_score !== null ? s.trust_score + '%' : 'N/A'}</strong>
-                            </div>
-                            <div class="trust-gauge-bar">
-                                <div class="trust-gauge-fill" style="width: ${s.trust_score || 0}%; background: ${getTrustColor(s.trust_score)};"></div>
-                            </div>
-                        </div>
-                        <div class="root-cause-tag">
-                            <strong>Diagnosis:</strong> ${s.root_cause}
-                        </div>
-                    `;
-                    grid.appendChild(card);
+                    const color = isAnomaly ? '#ef4444' : '#10b981';
+
+                    if (markers[s.station_id]) map.removeLayer(markers[s.station_id]);
+
+                    const marker = L.circleMarker([s.lat, s.lon], {
+                        radius: 10,
+                        fillColor: color,
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <strong>${s.station_id}</strong><br>
+                        ${s.location}<br>
+                        Temp: ${s.temperature}°C, Pressure: ${s.pressure}hPa<br>
+                        Trust Score: ${s.trust_score}%<br>
+                        Status: <strong>${s.root_cause}</strong>
+                    `);
+
+                    markers[s.station_id] = marker;
                 });
-
-                // Render Overview Charts
-                renderOverviewCharts(labels, temps, pressures, humidities);
-
             } catch (err) {
-                console.error("Error loading dashboard data:", err);
+                console.error("Map load error:", err);
             }
         }
 
-        // OVERVIEW CHARTS RENDER
-        function renderOverviewCharts(labels, temps, pressures, humidities) {
-            if (overviewTempChart) overviewTempChart.destroy();
-            if (overviewPressureChart) overviewPressureChart.destroy();
-            if (overviewHumidityChart) overviewHumidityChart.destroy();
-
-            const chartOpts = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-                }
-            };
-
-            overviewTempChart = new Chart(document.getElementById("overviewTempChart"), {
-                type: "bar",
-                data: { labels, datasets: [{ label: "Temp °C", data: temps, backgroundColor: "#3b82f6", borderRadius: 6 }] },
-                options: chartOpts
-            });
-
-            overviewPressureChart = new Chart(document.getElementById("overviewPressureChart"), {
-                type: "line",
-                data: { labels, datasets: [{ label: "Pressure hPa", data: pressures, borderColor: "#10b981", tension: 0.3, pointRadius: 4 }] },
-                options: chartOpts
-            });
-
-            overviewHumidityChart = new Chart(document.getElementById("overviewHumidityChart"), {
-                type: "line",
-                data: { labels, datasets: [{ label: "Humidity %", data: humidities, borderColor: "#8b5cf6", tension: 0.3, pointRadius: 4 }] },
-                options: chartOpts
-            });
-        }
-
-        // LOAD DIGITAL TWIN
-        async function loadDigitalTwin() {
+        // SMART ALERT CENTER (PHASE 4)
+        let allAlerts = [];
+        async function loadAlertsData() {
             try {
-                const station = document.getElementById("twinStationSelect").value;
-                const res = await fetch(API + "/digital-twin/" + station + "?points=48");
-                const data = await res.json();
-                const timestamps = data.timestamps.map(t => t.slice(5, 16));
-
-                if (twinTempChart) twinTempChart.destroy();
-                if (twinPressureChart) twinPressureChart.destroy();
-                if (twinHumidityChart) twinHumidityChart.destroy();
-
-                const createTwinChart = (elementId, label, actualData, expectedData, color) => {
-                    return new Chart(document.getElementById(elementId), {
-                        type: "line",
-                        data: {
-                            labels: timestamps,
-                            datasets: [
-                                { label: "Actual Sensor Reading", data: actualData, borderColor: "#ef4444", borderWidth: 2, tension: 0.2, pointRadius: 2 },
-                                { label: "Digital Twin Expected Baseline", data: expectedData, borderColor: color, borderDash: [6, 4], borderWidth: 2, tension: 0.2, pointRadius: 0 }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { labels: { color: '#f8fafc' } } },
-                            scales: {
-                                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
-                            }
-                        }
-                    });
-                };
-
-                twinTempChart = createTwinChart("twinTempChart", "Temp", data.temperature, data.temperature_expected, "#3b82f6");
-                twinPressureChart = createTwinChart("twinPressureChart", "Pressure", data.pressure, data.pressure_expected, "#10b981");
-                twinHumidityChart = createTwinChart("twinHumidityChart", "Humidity", data.humidity, data.humidity_expected, "#8b5cf6");
-
+                const res = await fetch(API_BASE + "/alerts");
+                allAlerts = await res.json();
+                renderAlertsTable(allAlerts);
             } catch (err) {
-                console.error("Error loading Digital Twin:", err);
+                console.error("Alerts error:", err);
             }
         }
 
-        // LOAD ALERTS & XAI
-        async function loadAlerts() {
+        function renderAlertsTable(alerts) {
+            const tbody = document.getElementById("alertsTableBody");
+            tbody.innerHTML = "";
+
+            alerts.forEach((a, i) => {
+                const tr = document.createElement("tr");
+                const sev = a.confidence_score > 0.4 ? "CRITICAL" : "WARNING";
+                const sevBadge = sev === "CRITICAL" ? "badge-red" : "badge-amber";
+
+                tr.innerHTML = `
+                    <td>${a.timestamp}</td>
+                    <td><strong>${a.station_id}</strong></td>
+                    <td><span class="badge ${sevBadge}">${sev}</span></td>
+                    <td>${a.root_cause}</td>
+                    <td>${a.confidence_score}</td>
+                    <td>${a.trust_score}%</td>
+                    <td><span class="badge badge-blue">Active</span></td>
+                    <td>
+                        <button class="btn-sm" onclick="inspectSHAP('${a.station_id}', '${a.timestamp}')">🔍 SHAP</button>
+                        <button class="btn-sm" onclick="openWorkOrderModal('${a.station_id}')">📋 Order</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterAlerts(type) {
+            if (type === 'ALL') renderAlertsTable(allAlerts);
+            else renderAlertsTable(allAlerts.filter(a => (type === 'CRITICAL' ? a.confidence_score > 0.4 : a.confidence_score <= 0.4)));
+        }
+
+        // XAI SHAP INSPECTOR (PHASE 5)
+        async function inspectSHAP(stationId, timestamp) {
+            switchView('xai');
             try {
-                const res = await fetch(API + "/alerts");
+                const res = await fetch(API_BASE + "/explain/" + stationId + "?timestamp=" + encodeURIComponent(timestamp));
+                const d = await res.json();
+
+                const box = document.getElementById("xaiInspectorBox");
+                box.innerHTML = `
+                    <h3 style="color: var(--accent-blue); margin-bottom: 12px;">🧠 SHAP Feature Attribution — ${d.station_id}</h3>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                        Timestamp: ${d.timestamp} | Root Cause: <strong>${d.root_cause}</strong> | Trust Score: <strong>${d.trust_score}%</strong>
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${Object.entries(d.shap_contributions).map(([k, v]) => `
+                            <div>
+                                <div style="font-size: 12px; font-weight: 600;">${k}: ${v.toFixed(4)}</div>
+                                <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow:hidden; margin-top: 4px;">
+                                    <div style="height:100%; width:${Math.min(100, Math.abs(v)*25)}%; background:${v > 0 ? '#ef4444' : '#3b82f6'}; border-radius:4px;"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } catch (err) {
+                console.error("SHAP error:", err);
+            }
+        }
+
+        // TIMELINE DATA (PHASE 5)
+        async function loadTimelineData() {
+            try {
+                const res = await fetch(API_BASE + "/alerts");
                 const alerts = await res.json();
-                const tbody = document.getElementById("alertsTableBody");
+                const tbody = document.getElementById("timelineTableBody");
                 tbody.innerHTML = "";
 
                 alerts.forEach(a => {
                     const tr = document.createElement("tr");
-                    tr.className = "clickable-row";
-                    tr.onclick = () => explainAlert(a.station_id, a.timestamp);
                     tr.innerHTML = `
                         <td>${a.timestamp}</td>
                         <td><strong>${a.station_id}</strong></td>
+                        <td><span class="badge badge-amber">${a.root_cause}</span></td>
+                        <td><span class="badge badge-red">Critical</span></td>
                         <td>${a.confidence_score}</td>
-                        <td><span class="tag-badge" style="background:${getTrustColor(a.trust_score)}22; color:${getTrustColor(a.trust_score)};">${a.trust_score}%</span></td>
-                        <td>${a.temperature ?? 'N/A'} °C</td>
-                        <td>${a.pressure ?? 'N/A'} hPa</td>
-                        <td>${a.humidity ?? 'N/A'} %</td>
-                        <td><span class="tag-badge tag-red">${a.root_cause}</span></td>
-                        <td><button class="action-btn" style="padding:4px 8px; font-size:11px;">🔍 Inspect SHAP</button></td>
+                        <td>${a.root_cause}</td>
                     `;
                     tbody.appendChild(tr);
                 });
             } catch (err) {
-                console.error("Error loading alerts:", err);
+                console.error("Timeline error:", err);
             }
         }
 
-        // EXPLAIN ALERT (SHAP)
-        async function explainAlert(stationId, timestamp) {
+        // WHAT-IF SENSOR SIMULATOR (PHASE 7)
+        async function runWhatIfSimulation() {
+            const t = parseFloat(document.getElementById("simTemp").value);
+            const p = parseFloat(document.getElementById("simPressure").value);
+            const h = parseFloat(document.getElementById("simHumidity").value);
+
             try {
-                const res = await fetch(API + "/explain/" + stationId + "?timestamp=" + encodeURIComponent(timestamp));
+                const res = await fetch(API_BASE + "/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ temperature: t, pressure: p, humidity: h })
+                });
+
                 const d = await res.json();
+                const box = document.getElementById("simResultBox");
 
-                const box = document.getElementById("explainBox");
-                box.classList.add("active");
-
-                document.getElementById("explainStationTag").textContent = `${d.station_id} @ ${d.timestamp}`;
-                document.getElementById("explainMetaText").textContent =
-                    `Root Cause: ${d.root_cause} | Confidence Score: ${d.confidence_score} | Trust Score: ${d.trust_score}%`;
-
-                const container = document.getElementById("shapBarsContainer");
-                container.innerHTML = "";
-
-                const maxVal = Math.max(...Object.values(d.shap_contributions).map(v => Math.abs(v)), 0.001);
-                for (const [feat, val] of Object.entries(d.shap_contributions)) {
-                    const pct = (Math.abs(val) / maxVal) * 100;
-                    const fillBg = val > 0 ? '#ef4444' : '#3b82f6';
-                    const row = document.createElement("div");
-                    row.className = "shap-row";
-                    row.innerHTML = `
-                        <div class="shap-label">${feat}</div>
-                        <div class="shap-track">
-                            <div class="shap-fill" style="width: ${pct}%; background: ${fillBg};"></div>
+                box.innerHTML = `
+                    <div style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: ${d.predicted_anomaly ? '#ef4444' : '#10b981'}">
+                        ${d.predicted_anomaly ? '⚠️ ANOMALOUS READINGS DETECTED' : '✓ TELEMETRY NORMAL'}
+                    </div>
+                    <div style="font-size: 13px; display:flex; flex-direction:column; gap: 8px;">
+                        <div>Confidence Score: <strong>${d.confidence_score}</strong></div>
+                        <div>Data Trust Score: <strong>${d.trust_score}%</strong></div>
+                        <div>Dew Point: <strong>${d.dew_point} °C</strong></div>
+                        <div>Diagnosis: <span class="badge badge-amber">${d.predicted_root_cause}</span></div>
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                            <strong>Recommended Action:</strong><br>${d.recommended_action}
                         </div>
-                        <div class="shap-val" style="color: ${fillBg}">${val.toFixed(4)}</div>
-                    `;
-                    container.appendChild(row);
-                }
-
-                const correctedStr = Object.entries(d.suggested_corrected_values)
-                    .map(([k, v]) => `${k}: <strong>${v ?? 'N/A'}</strong>`).join(" &nbsp;|&nbsp; ");
-                document.getElementById("explainCorrectedText").innerHTML = correctedStr;
-
-                box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    </div>
+                `;
             } catch (err) {
-                console.error("Error explaining alert:", err);
+                console.error("Simulation error:", err);
             }
         }
 
-        // LOAD PREDICTIVE MAINTENANCE
-        async function loadMaintenance() {
-            try {
-                const res = await fetch(API + "/maintenance");
-                const rows = await res.json();
-                const tbody = document.getElementById("maintenanceTableBody");
-                tbody.innerHTML = "";
+        // WORK ORDERS (PHASE 8)
+        let workOrders = [
+            { id: "WO-2026-101", station: "AWS_003", issue: "Sensor Stuck Fault / Localized Anomaly", priority: "High", team: "Team Alpha", date: "2026-09-06", status: "In Progress" }
+        ];
 
-                const tagClass = {
-                    "MAINTENANCE_REQUIRED_NOW": "tag-red",
-                    "MAINTENANCE_PREDICTED_SOON": "tag-amber",
-                    "DEGRADING_SLOWLY": "tag-blue",
-                    "HEALTHY": "tag-green"
-                };
+        function loadWorkOrders() {
+            const tbody = document.getElementById("workOrderTableBody");
+            tbody.innerHTML = "";
 
-                rows.forEach(r => {
-                    const tr = document.createElement("tr");
-                    const cls = tagClass[r.status] || "tag-green";
-                    const eta = r.estimated_days_to_maintenance !== null ? `${r.estimated_days_to_maintenance} days` : '—';
-                    tr.innerHTML = `
-                        <td><strong>${r.station_id}</strong></td>
-                        <td><span class="tag-badge ${cls}">${r.status.replace(/_/g, ' ')}</span></td>
-                        <td>${(r.current_anomaly_rate * 100).toFixed(1)}%</td>
-                        <td>${r.trend_slope_per_hour.toFixed(6)}</td>
-                        <td><strong>${eta}</strong></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (err) {
-                console.error("Error loading maintenance:", err);
+            workOrders.forEach(w => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td><strong>${w.id}</strong></td>
+                    <td>${w.station}</td>
+                    <td>${w.issue}</td>
+                    <td><span class="badge badge-amber">${w.priority}</span></td>
+                    <td>${w.team}</td>
+                    <td>${w.date}</td>
+                    <td><span class="badge badge-blue">${w.status}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openWorkOrderModal(stationId) {
+            if (stationId) document.getElementById("woStation").value = stationId;
+            document.getElementById("woModal").classList.add("active");
+        }
+
+        function closeWorkOrderModal() {
+            document.getElementById("woModal").classList.remove("active");
+        }
+
+        function handleCreateWorkOrder(e) {
+            e.preventDefault();
+            const station = document.getElementById("woStation").value;
+            const issue = document.getElementById("woIssue").value;
+            const priority = document.getElementById("woPriority").value;
+            const team = document.getElementById("woTeam").value;
+
+            workOrders.push({
+                id: `WO-2026-${100 + workOrders.length + 1}`,
+                station, issue, priority, team,
+                date: new Date().toISOString().slice(0, 10),
+                status: "Open"
+            });
+
+            closeWorkOrderModal();
+            loadWorkOrders();
+            switchView("work-orders");
+        }
+
+        // OPERATOR ASSISTANT (PHASE 10)
+        function toggleChatWidget() {
+            document.getElementById("chatWidget").classList.toggle("collapsed");
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById("chatInput");
+            const txt = input.value.trim();
+            if (!txt) return;
+
+            const body = document.getElementById("chatBody");
+            const uMsg = document.createElement("div");
+            uMsg.className = "chat-msg user";
+            uMsg.textContent = txt;
+            body.appendChild(uMsg);
+
+            input.value = "";
+
+            // Deterministic response based on query
+            setTimeout(() => {
+                const bMsg = document.createElement("div");
+                bMsg.className = "chat-msg bot";
+                const q = txt.toLowerCase();
+
+                if (q.includes("aws_003")) bMsg.textContent = "AWS_003 (Chennai) is flagged for sensor_stuck_fault due to near-zero rolling variance and localized z-score divergence.";
+                else if (q.includes("trust")) bMsg.textContent = "AWS_005 currently holds the highest trust score (95.2%), while AWS_003 has the lowest (57.5%).";
+                else if (q.includes("systemic")) bMsg.textContent = "Binomial significance testing identified 21 statistically significant systemic events across the fleet (p < 0.05).";
+                else bMsg.textContent = `SkyGuard AI is currently processing 10,800 telemetry records across 5 active AWS nodes with an overall anomaly rate of 22.7%.`;
+
+                body.appendChild(bMsg);
+                body.scrollTop = body.scrollHeight;
+            }, 600);
+        }
+
+        // SIH DEMO PRESETS (PHASE 14)
+        function runDemoPreset(type) {
+            if (type === 'frozen') {
+                switchView('xai');
+                inspectSHAP('AWS_003', '2025-03-31 23:00:00');
+            } else if (type === 'systemic') {
+                switchView('fleet-intel');
+            } else if (type === 'maintenance') {
+                switchView('maintenance');
             }
         }
 
-        // LOAD FLEET INTELLIGENCE
-        async function loadFleetIntelligence() {
-            try {
-                const [sysRes, archRes] = await Promise.all([
-                    fetch(API + "/fleet/systemic"),
-                    fetch(API + "/fleet/archetypes")
-                ]);
-
-                const systemic = await sysRes.json();
-                const archetypes = await archRes.json();
-
-                const sysTbody = document.getElementById("systemicTableBody");
-                sysTbody.innerHTML = "";
-                systemic.slice(0, 10).forEach(r => {
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-                        <td>${r.date}</td>
-                        <td><span class="tag-badge tag-amber">${r.predicted_root_cause}</span></td>
-                        <td><strong>${r.stations_affected}</strong></td>
-                        <td>${r.p_value_vs_chance}</td>
-                    `;
-                    sysTbody.appendChild(tr);
-                });
-
-                const archTbody = document.getElementById("archetypeTableBody");
-                archTbody.innerHTML = "";
-                archetypes.forEach(r => {
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-                        <td><strong>Cluster #${r.archetype}</strong></td>
-                        <td>${r.occurrences}</td>
-                        <td>${r.stations_affected}</td>
-                        <td><span class="tag-badge tag-blue">${r.dominant_root_cause}</span></td>
-                    `;
-                    archTbody.appendChild(tr);
-                });
-            } catch (err) {
-                console.error("Error loading fleet intelligence:", err);
-            }
+        // THEME TOGGLE (PHASE 11)
+        function toggleTheme() {
+            const val = document.getElementById("themeSelect").value;
+            if (val === 'light') document.body.classList.add("light-theme");
+            else document.body.classList.remove("light-theme");
         }
 
-        // WEBSOCKET LIVE STREAM LOGIC
-        let ws = null;
-        let isLive = false;
-
-        function toggleLiveMode() {
-            const btn = document.getElementById("liveToggleBtn");
-            const bar = document.getElementById("liveTickerBar");
-
-            if (!isLive) {
-                const wsUrl = API.replace("http", "ws") + "/ws/live";
-                ws = new WebSocket(wsUrl);
-
-                ws.onmessage = (evt) => {
-                    const d = JSON.parse(evt.data);
-                    const icon = d.predicted_anomaly === 1 ? '⚠️' : '✓';
-                    document.getElementById("liveTickerMsg").innerHTML =
-                        `${icon} <strong>${d.station_id}</strong> @ ${d.timestamp} &nbsp;|&nbsp; ` +
-                        `Temp: ${d.temperature}°C, Press: ${d.pressure}hPa, Hum: ${d.humidity}% &nbsp;|&nbsp; ` +
-                        `Trust Score: <strong style="color:${getTrustColor(d.trust_score)}">${d.trust_score}%</strong> &nbsp;|&nbsp; Diagnosis: <em>${d.root_cause}</em>`;
-                };
-
-                ws.onerror = () => {
-                    document.getElementById("liveTickerMsg").textContent = "WebSocket connection failed. Verify FastAPI server is running on port 8000.";
-                };
-
-                bar.classList.add("active");
-                btn.textContent = "⏹ Stop WS Stream";
-                btn.classList.add("active");
-                isLive = true;
-            } else {
-                if (ws) ws.close();
-                bar.classList.remove("active");
-                btn.textContent = "🔴 Live Mode WS";
-                btn.classList.remove("active");
-                isLive = false;
-            }
+        // Check persistent auth session on startup
+        if (localStorage.getItem("skyguard_user")) {
+            document.getElementById("loginWrapper").style.display = "none";
+            document.getElementById("appShell").classList.add("active");
+            initApp();
         }
-
-        // INIT LOAD
-        loadDashboard();
-        setInterval(loadDashboard, 15000);
     </script>
 </body>
 </html>

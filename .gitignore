@@ -1,0 +1,18 @@
+# Environment secrets & local config
+.env
+.env.local
+.env.*.local
+
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
