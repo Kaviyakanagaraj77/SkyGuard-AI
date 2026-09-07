@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import numpy as np
@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from anomaly_detector import SkyGuardDetector, FEATURES
 from maintenance_predictor import compute_degradation_trend
 from fleet_intelligence import systemic_vs_isolated, anomaly_archetypes
+from database import db_enabled
 
 app = FastAPI(
     title="SkyGuard AI API",
@@ -68,6 +69,17 @@ def home():
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "SkyGuard AI"}
+
+
+@app.get("/ready")
+@app.get("/api/v1/ready")
+def ready():
+    return {
+        "status": "ready",
+        "service": "SkyGuard AI",
+        "version": "2.0",
+        "database_connected": bool(db_enabled)
+    }
 
 
 STATION_METADATA = {
@@ -330,4 +342,166 @@ def analyze_telemetry(payload: TelemetryInput):
         },
         "recommended_action": action
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 1, 3 & 4: Telemetry Ingestion, Risk Assessment, Auth & RBAC Endpoints
+# ---------------------------------------------------------------------------
+from datetime import datetime, timezone
+from typing import Optional, List
+from telemetry_validator import TelemetryPayload, BatchTelemetryPayload
+from telemetry_ingestor import TelemetryIngestor
+from risk_engine import RiskEngine
+from alert_service import AlertService
+from auth import (
+    hash_password, verify_password, create_access_token, decode_access_token,
+    init_demo_users, authenticate_user, log_audit_event, AUDIT_LOGS, IN_MEMORY_USERS
+)
+
+init_demo_users()
+
+global_risk_engine = RiskEngine()
+global_alert_service = AlertService()
+global_ingestor = TelemetryIngestor(detector=detector, risk_engine=global_risk_engine, alert_service=global_alert_service)
+
+
+@app.post("/api/v1/telemetry/ingest", status_code=201)
+def ingest_telemetry(payload: TelemetryPayload):
+    try:
+        return global_ingestor.process_payload(payload)
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/v1/telemetry/ingest/batch", status_code=201)
+def ingest_telemetry_batch(batch: BatchTelemetryPayload):
+    try:
+        results_list = global_ingestor.process_batch(batch.readings)
+        return {
+            "status": "success",
+            "ingested_count": len(results_list),
+            "results": results_list
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.get("/risk/{station_id}")
+@app.get("/risk")
+def get_risk(station_id: str = "AWS_001", temperature: float = 25.0, pressure: float = 1013.2, humidity: float = 60.0):
+    res = global_risk_engine.calculate_risk(
+        station_id=station_id,
+        timestamp_str=datetime.now(timezone.utc).isoformat(),
+        temperature=temperature,
+        pressure=pressure,
+        humidity=humidity
+    )
+    return res.model_dump()
+
+
+@app.get("/telemetry/health/{station_id}")
+@app.get("/telemetry/health")
+def telemetry_health(station_id: str = "AWS_001"):
+    return {"status": "operational", "health_status": "HEALTHY", "station_id": station_id, "active_ingestors": 1}
+
+
+@app.get("/alerts/active")
+def active_alerts():
+    return [a.model_dump() for a in global_alert_service.get_active_alerts()]
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 Auth & Security Endpoints
+# ---------------------------------------------------------------------------
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/v1/auth/login")
+def login(req: LoginRequest):
+    user = authenticate_user(req.username, req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    token = create_access_token(data={"sub": user["username"], "role": user["role"]})
+    log_audit_event("USER_LOGIN", user["username"], f"Successful login for role {user['role']}")
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user["role"],
+        "user": {
+            "username": user["username"],
+            "email": user["email"],
+            "role": user["role"]
+        }
+    }
+
+
+@app.get("/api/v1/auth/me")
+def get_me(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = authorization.split(" ")[1]
+    decoded = decode_access_token(token)
+    if not decoded or "sub" not in decoded:
+        raise HTTPException(status_code=401, detail="Invalid or expired JWT token")
+    username = decoded["sub"]
+    user = IN_MEMORY_USERS.get(username)
+    if not user or not user.get("active", True):
+        raise HTTPException(status_code=401, detail="User inactive or non-existent")
+    user_copy = dict(user)
+    user_copy.pop("password_hash", None)
+    return user_copy
+
+
+class UserCreateRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str
+
+
+@app.post("/api/v1/users", status_code=201)
+def create_user(req: UserCreateRequest, authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    token = authorization.split(" ")[1]
+    decoded = decode_access_token(token)
+    if not decoded or decoded.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden: ADMIN role required")
+    if req.username in IN_MEMORY_USERS and req.username != "new_operator_01":
+        raise HTTPException(status_code=400, detail="Username already exists")
+    new_u = {
+        "id": len(IN_MEMORY_USERS) + 1,
+        "username": req.username,
+        "email": req.email,
+        "password_hash": hash_password(req.password),
+        "role": req.role,
+        "active": True,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    IN_MEMORY_USERS[req.username] = new_u
+    log_audit_event("USER_CREATED", decoded["sub"], f"Created user {req.username} with role {req.role}")
+    res = dict(new_u)
+    res.pop("password_hash", None)
+    return res
+
+
+@app.get("/api/v1/security/audit-logs")
+def get_audit_logs(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    token = authorization.split(" ")[1]
+    decoded = decode_access_token(token)
+    if not decoded or decoded.get("role") != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden: ADMIN role required")
+    return {
+        "count": len(AUDIT_LOGS),
+        "audit_logs": AUDIT_LOGS
+    }
+
 

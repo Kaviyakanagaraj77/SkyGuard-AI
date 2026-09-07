@@ -1296,9 +1296,58 @@
             if (viewId === 'fleet-intel') loadFleetIntel();
         }
 
+        // LIVE BACKEND HEALTH MONITOR
+        let lastConnectedTime = null;
+        let isCheckingHealth = false;
+
+        async function checkBackendHealth() {
+            if (isCheckingHealth) return;
+            isCheckingHealth = true;
+
+            const pill = document.getElementById("backendPill");
+            if (!pill) return;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                
+                const res = await fetch(API_BASE + "/health", { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    const now = new Date();
+                    lastConnectedTime = now.toLocaleTimeString();
+                    const hostLabel = API_BASE.includes("render.com") ? "Render Production" : "Local Fast-API";
+                    
+                    pill.className = "status-pill online";
+                    pill.style.cssText = "background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 12px; border-radius: 16px;";
+                    pill.innerHTML = `
+                        <div style="width:8px; height:8px; border-radius:50%; background:#10b981;"></div>
+                        🟢 Backend Online (${hostLabel}) · ${lastConnectedTime}
+                    `;
+                } else {
+                    throw new Error("HTTP " + res.status);
+                }
+            } catch (err) {
+                const hostLabel = API_BASE.includes("render.com") ? "Render" : "Local";
+                const lastSeenText = lastConnectedTime ? `Last online: ${lastConnectedTime}` : "Connecting...";
+                
+                pill.className = "status-pill offline";
+                pill.style.cssText = "background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 12px; border-radius: 16px;";
+                pill.innerHTML = `
+                    <div style="width:8px; height:8px; border-radius:50%; background:#ef4444;"></div>
+                    🔴 ${hostLabel} Offline (${err.name === 'AbortError' ? 'Timeout / Cold-Start' : 'Unreachable'}) — ${lastSeenText}
+                    <button class="btn-sm" style="padding: 2px 8px; font-size: 10px; margin-left: 4px;" onclick="checkBackendHealth()">↻ Retry</button>
+                `;
+            } finally {
+                isCheckingHealth = false;
+            }
+        }
+
         // INIT APP
         function initApp() {
-            document.getElementById("apiHostLabel").textContent = API_BASE.includes("render.com") ? "Render Production" : "Local Fast-API";
+            checkBackendHealth();
+            setInterval(checkBackendHealth, 10000);
             loadDashboardData();
             loadAlertsData();
             loadTimelineData();
